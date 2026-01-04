@@ -5,9 +5,8 @@ HOW TO USE:
 
 1. Open YTMP3_Launcher.cmd
 2. Choose MP3 or MP4
-3. Choose Single Video, Playlist, or Channel
-4. Paste the YouTube URL
-5. Click Download
+3. Paste the YouTube URL
+4. Click Download
 
 FILES SAVE LOCATION:
 - MP3 downloads → Audio\<Video or Playlist Name>\
@@ -23,5 +22,10 @@ FFmpeg: https://ffmpeg.org
 PS2EXE: https://github.com/MScholtes/PS2EXE
 
 Made with PowerShell + Windows Forms
+
+
+
+by ryguy.os + https://chatgpt.com
+
 
 
