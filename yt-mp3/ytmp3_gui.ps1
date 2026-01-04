@@ -1,50 +1,86 @@
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-# ------------------ FOLDERS ------------------
-$BaseDir  = $PSScriptRoot
-$AudioDir = Join-Path $BaseDir "Audio"
-$VideoDir = Join-Path $BaseDir "Video"
+# ================== FOLDERS ==================
+$BaseDir = $PSScriptRoot
+$MP3Dir  = Join-Path $BaseDir "MP3"
+$MP4Dir  = Join-Path $BaseDir "MP4"
+foreach ($d in @($MP3Dir,$MP4Dir)) {
+    if (!(Test-Path $d)) { New-Item $d -ItemType Directory | Out-Null }
+}
 
-$null = New-Item $AudioDir -ItemType Directory -Force
-$null = New-Item $VideoDir -ItemType Directory -Force
-
-# ------------------ COLORS ------------------
+# ================== COLORS ==================
 $BG  = [System.Drawing.Color]::FromArgb(30,30,30)
 $FG  = [System.Drawing.Color]::White
 $BTN = [System.Drawing.Color]::FromArgb(55,55,55)
 
-# ------------------ COMMON FORM SETUP ------------------
-function New-FixedForm($title,$w,$h){
+# ================== DOWNLOAD FUNCTIONS ==================
+function Download-MP3($Url,$Mode,$Status) {
+    $Status.Text = "Downloading MP3..."
+    Start-Process -NoNewWindow -Wait -FilePath "$BaseDir\yt-dlp.exe" -ArgumentList @(
+        "-x","--audio-format","mp3","--audio-quality","0",
+        "--embed-thumbnail","--add-metadata",
+        "-o","$MP3Dir\%(playlist_title|channel|title)s\%(title)s.%(ext)s",
+        $Mode,
+        $Url
+    )
+    $Status.Text = "Done"
+}
+
+function Download-MP4($Url,$Mode,$Status) {
+    $Status.Text = "Downloading MP4..."
+    Start-Process -NoNewWindow -Wait -FilePath "$BaseDir\yt-dlp.exe" -ArgumentList @(
+        "-f","mp4",
+        "-o","$MP4Dir\%(playlist_title|channel|title)s\%(title)s.%(ext)s",
+        $Mode,
+        $Url
+    )
+    $Status.Text = "Done"
+}
+
+# ================== INSTRUCTIONS ==================
+function Show-Instructions {
+[System.Windows.Forms.MessageBox]::Show(
+@"
+HOW TO USE
+
+1. Choose MP3 or MP4
+2. Choose Single / Playlist / Channel
+3. Paste URL
+4. Click Download
+
+• Each download makes its own folder
+• yt-dlp.exe + ffmpeg.exe must be in this folder
+"@,"Instructions")
+}
+
+# ================== CREDITS ==================
+function Show-Credits {
+[System.Windows.Forms.MessageBox]::Show(
+@"
+Credits
+
+yt-dlp
+https://github.com/yt-dlp/yt-dlp
+
+ffmpeg
+https://ffmpeg.org
+
+PS2EXE
+https://github.com/MScholtes/PS2EXE
+"@,"Credits")
+}
+
+# ================== DOWNLOAD WINDOW ==================
+function Open-DownloadWindow($Title,$Mode,$Type) {
     $f = New-Object System.Windows.Forms.Form
-    $f.Text = $title
-    $f.Size = "$w,$h"
+    $f.Text = $Title
+    $f.Size = "360,230"
     $f.StartPosition = "CenterScreen"
     $f.FormBorderStyle = "FixedDialog"
     $f.MaximizeBox = $false
-    $f.MinimizeBox = $true
     $f.BackColor = $BG
     $f.ForeColor = $FG
-    if (Test-Path "$BaseDir\app.ico"){
-        $f.Icon = New-Object System.Drawing.Icon("$BaseDir\app.ico")
-    }
-    return $f
-}
-
-function MakeBtn($text,$x,$y,$w,$h,$action){
-    $b = New-Object System.Windows.Forms.Button
-    $b.Text = $text
-    $b.Location = "$x,$y"
-    $b.Size = "$w,$h"
-    $b.BackColor = $BTN
-    $b.ForeColor = $FG
-    $b.Add_Click($action)
-    return $b
-}
-
-# ------------------ DOWNLOAD WINDOW ------------------
-function Open-DownloadWindow($title,$args,$outDir){
-    $f = New-FixedForm $title 360 230
 
     $lbl = New-Object System.Windows.Forms.Label
     $lbl.Text = "Paste URL:"
@@ -56,119 +92,93 @@ function Open-DownloadWindow($title,$args,$outDir){
     $box.Width = 300
 
     $status = New-Object System.Windows.Forms.Label
-    $status.Location = "20,170"
+    $status.Location = "20,160"
     $status.AutoSize = $true
 
-    $dl = MakeBtn "Download" 20 100 120 30 {
-        if ($box.Text.Trim()){
-            $status.Text = "Downloading..."
-            Start-Process -NoNewWindow -Wait `
-                -FilePath "$BaseDir\yt-dlp.exe" `
-                -ArgumentList "$args -o `"$outDir\%(title)s.%(ext)s`" $($box.Text)"
-            $status.Text = "Done"
+    $btn = New-Object System.Windows.Forms.Button
+    $btn.Text = "Download"
+    $btn.Size = "120,30"
+    $btn.Location = "20,100"
+    $btn.BackColor = $BTN
+    $btn.ForeColor = $FG
+    $btn.Add_Click({
+        if ($box.Text.Trim()) {
+            if ($Type -eq "MP3") { Download-MP3 $box.Text $Mode $status }
+            if ($Type -eq "MP4") { Download-MP4 $box.Text $Mode $status }
         }
-    }
+    })
 
-    $exit = MakeBtn "Exit" 220 100 80 30 { $f.Close() }
+    $exit = New-Object System.Windows.Forms.Button
+    $exit.Text = "Exit"
+    $exit.Size = "80,30"
+    $exit.Location = "240,100"
+    $exit.BackColor = $BTN
+    $exit.ForeColor = $FG
+    $exit.Add_Click({ $f.Close() })
 
-    $f.Controls.AddRange(@($lbl,$box,$dl,$exit,$status))
+    $f.Controls.AddRange(@($lbl,$box,$btn,$exit,$status))
     $f.ShowDialog()
 }
 
-# ------------------ MP3 MENU ------------------
-function Open-MP3Menu{
-    $f = New-FixedForm "MP3 Downloads" 320 320
+# ================== MENU BUILDER ==================
+function Open-Menu($Type) {
+    $form = New-Object System.Windows.Forms.Form
+    $form.Text = "YT $Type Downloader"
+    $form.Size = "340,430"
+    $form.StartPosition = "CenterScreen"
+    $form.FormBorderStyle = "FixedDialog"
+    $form.MaximizeBox = $false
+    $form.BackColor = $BG
+    $form.ForeColor = $FG
 
-    $b1 = MakeBtn "Single → MP3" 40 40 240 40 {
-        Open-DownloadWindow "Single MP3" `
-        "-x --audio-format mp3 --audio-quality 0 --embed-thumbnail --add-metadata --no-playlist" `
-        $AudioDir
+    if (Test-Path "$BaseDir\app.ico") {
+        $form.Icon = New-Object System.Drawing.Icon("$BaseDir\app.ico")
     }
 
-    $b2 = MakeBtn "Playlist → MP3" 40 90 240 40 {
-        Open-DownloadWindow "Playlist MP3" `
-        "-x --audio-format mp3 --audio-quality 0 --embed-thumbnail --add-metadata" `
-        $AudioDir
+    function Btn($t,$y,$a){
+        $b = New-Object System.Windows.Forms.Button
+        $b.Text=$t; $b.Size="240,38"; $b.Location="40,$y"
+        $b.BackColor=$BTN; $b.ForeColor=$FG
+        $b.Add_Click($a); return $b
     }
 
-    $b3 = MakeBtn "Channel → MP3" 40 140 240 40 {
-        Open-DownloadWindow "Channel MP3" `
-        "-x --audio-format mp3 --audio-quality 0 --embed-thumbnail --add-metadata" `
-        $AudioDir
-    }
+    $form.Controls.AddRange(@(
+        Btn "Single Video" 80  { Open-DownloadWindow "Single Video" "--no-playlist" $Type }
+        Btn "Playlist"     125 { Open-DownloadWindow "Playlist" "" $Type }
+        Btn "Channel"      170 { Open-DownloadWindow "Channel" "" $Type }
+        Btn "Instructions" 215 { Show-Instructions }
+        Btn "Credits"      260 { Show-Credits }
+        Btn "Back"         305 { $form.Close() }
+    ))
 
-    $back = MakeBtn "Back" 40 200 240 40 { $f.Close() }
-
-    $f.Controls.AddRange(@($b1,$b2,$b3,$back))
-    $f.ShowDialog()
+    $form.ShowDialog()
 }
 
-# ------------------ MP4 MENU ------------------
-function Open-MP4Menu{
-    $f = New-FixedForm "MP4 Downloads" 320 320
+# ================== MAIN MENU ==================
+$main = New-Object System.Windows.Forms.Form
+$main.Text = "YTMP Downloader"
+$main.Size = "340,300"
+$main.StartPosition = "CenterScreen"
+$main.FormBorderStyle = "FixedDialog"
+$main.MaximizeBox = $false
+$main.BackColor = $BG
+$main.ForeColor = $FG
 
-    $b1 = MakeBtn "Single → MP4" 40 40 240 40 {
-        Open-DownloadWindow "Single MP4" `
-        "-f mp4 --no-playlist" `
-        $VideoDir
-    }
-
-    $b2 = MakeBtn "Playlist → MP4" 40 90 240 40 {
-        Open-DownloadWindow "Playlist MP4" `
-        "-f mp4" `
-        $VideoDir
-    }
-
-    $b3 = MakeBtn "Channel → MP4" 40 140 240 40 {
-        Open-DownloadWindow "Channel MP4" `
-        "-f mp4" `
-        $VideoDir
-    }
-
-    $back = MakeBtn "Back" 40 200 240 40 { $f.Close() }
-
-    $f.Controls.AddRange(@($b1,$b2,$b3,$back))
-    $f.ShowDialog()
+if (Test-Path "$BaseDir\app.ico") {
+    $main.Icon = New-Object System.Drawing.Icon("$BaseDir\app.ico")
 }
 
-# ------------------ INFO ------------------
-function Show-Instructions{
-    [System.Windows.Forms.MessageBox]::Show(
-"1. Choose MP3 or MP4
-2. Select Single, Playlist, or Channel
-3. Paste URL and Download
-
-yt-dlp + ffmpeg must be in the same folder",
-"Instructions")
+function MainBtn($t,$y,$a){
+    $b=New-Object System.Windows.Forms.Button
+    $b.Text=$t;$b.Size="240,45";$b.Location="40,$y"
+    $b.BackColor=$BTN;$b.ForeColor=$FG
+    $b.Add_Click($a);return $b
 }
 
-function Show-Credits{
-    [System.Windows.Forms.MessageBox]::Show(
-"yt-dlp
-https://github.com/yt-dlp/yt-dlp
+$main.Controls.AddRange(@(
+    MainBtn "MP3 Downloader" 60  { Open-Menu "MP3" }
+    MainBtn "MP4 Downloader" 120 { Open-Menu "MP4" }
+    MainBtn "Exit"           180 { $main.Close() }
+))
 
-FFmpeg
-https://ffmpeg.org
-
-PS2EXE
-https://github.com/MScholtes/PS2EXE",
-"Credits")
-}
-
-# ------------------ MAIN MENU ------------------
-$form = New-FixedForm "YTMP3 / YTMP4" 340 360
-
-$title = New-Object System.Windows.Forms.Label
-$title.Text = "YTMP3 / YTMP4"
-$title.Font = New-Object System.Drawing.Font("Segoe UI",16,[System.Drawing.FontStyle]::Bold)
-$title.AutoSize = $true
-$title.Location = "80,20"
-
-$mp3 = MakeBtn "MP3 Menu" 40 80 240 40 { Open-MP3Menu }
-$mp4 = MakeBtn "MP4 Menu" 40 130 240 40 { Open-MP4Menu }
-$ins = MakeBtn "Instructions" 40 180 240 40 { Show-Instructions }
-$cred= MakeBtn "Credits" 40 230 240 40 { Show-Credits }
-$exit= MakeBtn "Exit" 40 280 240 40 { $form.Close() }
-
-$form.Controls.AddRange(@($title,$mp3,$mp4,$ins,$cred,$exit))
-$form.ShowDialog()
+$main.ShowDialog()
