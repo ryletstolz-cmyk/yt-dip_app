@@ -1,144 +1,148 @@
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-# ---------- FOLDERS ----------
-$AudioDir = Join-Path $PSScriptRoot "Audio"
-$VideoDir = Join-Path $PSScriptRoot "Video"
-foreach ($d in @($AudioDir,$VideoDir)) {
-    if (!(Test-Path $d)) { New-Item $d -ItemType Directory | Out-Null }
-}
+# ---------------- FOLDERS ----------------
+$BaseDir = $PSScriptRoot
+$AudioDir = Join-Path $BaseDir "Audio"
+$VideoDir = Join-Path $BaseDir "Video"
 
-# ---------- COLORS ----------
+$null = New-Item $AudioDir -ItemType Directory -Force
+$null = New-Item $VideoDir -ItemType Directory -Force
+
+# ---------------- COLORS ----------------
 $BG  = [System.Drawing.Color]::FromArgb(30,30,30)
 $FG  = [System.Drawing.Color]::White
 $BTN = [System.Drawing.Color]::FromArgb(55,55,55)
 
-# ---------- DOWNLOAD ----------
-function Download-MP3($Url,$Extra,$Status) {
+# ---------------- DOWNLOAD FUNCTIONS ----------------
+function Download-MP3($Url, $Status) {
+    $Folder = Join-Path $AudioDir ([guid]::NewGuid())
+    New-Item $Folder -ItemType Directory | Out-Null
+
     $Status.Text = "Downloading MP3..."
-    Start-Process -NoNewWindow -Wait "$PSScriptRoot\yt-dlp.exe" `
-        -ArgumentList "-x","--audio-format","mp3","--audio-quality","0",
-        "--embed-thumbnail","--add-metadata",
-        "-o","$AudioDir\%(title)s.%(ext)s",$Extra,$Url
+    Start-Process -Wait -NoNewWindow "$BaseDir\yt-dlp.exe" `
+        "-x --audio-format mp3 --audio-quality 0 --embed-thumbnail --add-metadata -o `"$Folder\%(title)s.%(ext)s`" $Url"
     $Status.Text = "Done"
 }
 
-function Download-MP4($Url,$Status) {
+function Download-MP4($Url, $Status) {
+    $Folder = Join-Path $VideoDir ([guid]::NewGuid())
+    New-Item $Folder -ItemType Directory | Out-Null
+
     $Status.Text = "Downloading MP4..."
-    Start-Process -NoNewWindow -Wait "$PSScriptRoot\yt-dlp.exe" `
-        -ArgumentList "-f","mp4","--merge-output-format","mp4",
-        "-o","$VideoDir\%(title)s.%(ext)s",$Url
+    Start-Process -Wait -NoNewWindow "$BaseDir\yt-dlp.exe" `
+        "-f mp4 -o `"$Folder\%(title)s.%(ext)s`" $Url"
     $Status.Text = "Done"
 }
 
-# ---------- INSTRUCTIONS ----------
-function Show-Instructions {
-    [System.Windows.Forms.MessageBox]::Show(
-"MP3:
-• Single Video
-• Playlist
-• Channel
-
-MP4:
-• Single Video
-
-Files save to Audio / Video folders
-yt-dlp.exe + ffmpeg.exe required",
-"Instructions","OK","Information")
-}
-
-# ---------- URL WINDOW ----------
-function Open-UrlWindow($Title,$IsMp3,$Extra) {
+# ---------------- DOWNLOAD WINDOW ----------------
+function Open-DownloadWindow($Title, $Mode) {
     $f = New-Object System.Windows.Forms.Form
     $f.Text = $Title
-    $f.Size = '360,230'
-    $f.FormBorderStyle = 'FixedDialog'
+    $f.Size = "380,260"
+    $f.StartPosition = "CenterScreen"
+    $f.FormBorderStyle = "FixedDialog"
     $f.MaximizeBox = $false
-    $f.StartPosition = 'CenterScreen'
     $f.BackColor = $BG
     $f.ForeColor = $FG
 
+    $lbl = New-Object System.Windows.Forms.Label
+    $lbl.Text = "Paste URL:"
+    $lbl.Location = "20,20"
+    $lbl.AutoSize = $true
+
     $box = New-Object System.Windows.Forms.TextBox
-    $box.Location = '20,40'
-    $box.Width = 300
+    $box.Location = "20,45"
+    $box.Width = 320
 
     $status = New-Object System.Windows.Forms.Label
-    $status.Location = '20,160'
+    $status.Location = "20,190"
     $status.AutoSize = $true
 
-    $btn = New-Object System.Windows.Forms.Button
-    $btn.Text = 'Download'
-    $btn.Location = '20,90'
-    $btn.Size = '120,30'
-    $btn.BackColor = $BTN
-    $btn.ForeColor = $FG
-    $btn.FlatStyle = 'Flat'
-    $btn.Add_Click({
-        if ($IsMp3) { Download-MP3 $box.Text $Extra $status }
-        else { Download-MP4 $box.Text $status }
+    $download = New-Object System.Windows.Forms.Button
+    $download.Text = "Download"
+    $download.Size = "110,32"
+    $download.Location = "20,110"
+    $download.BackColor = $BTN
+    $download.ForeColor = $FG
+    $download.Add_Click({
+        if ($box.Text.Trim()) {
+            if ($Mode -eq "MP3") { Download-MP3 $box.Text $status }
+            if ($Mode -eq "MP4") { Download-MP4 $box.Text $status }
+        }
     })
 
-    $exit = New-Object System.Windows.Forms.Button
-    $exit.Text = 'Exit'
-    $exit.Location = '240,90'
-    $exit.Size = '80,30'
-    $exit.BackColor = $BTN
-    $exit.ForeColor = $FG
-    $exit.FlatStyle = 'Flat'
-    $exit.Add_Click({ $f.Close() })
+    $cancel = New-Object System.Windows.Forms.Button
+    $cancel.Text = "Cancel"
+    $cancel.Size = "90,32"
+    $cancel.Location = "150,110"
+    $cancel.BackColor = $BTN
+    $cancel.ForeColor = $FG
+    $cancel.Add_Click({ $f.Close() })
 
-    $f.Controls.AddRange(@($box,$btn,$exit,$status))
-    $f.ShowDialog() | Out-Null
+    $f.Controls.AddRange(@($lbl,$box,$download,$cancel,$status))
+    $f.ShowDialog()
 }
 
-# ---------- MAIN FORM ----------
+# ---------------- INSTRUCTIONS ----------------
+function Show-Instructions {
+    [System.Windows.Forms.MessageBox]::Show(
+@"
+HOW TO USE
+
+1. Choose MP3 or MP4
+2. Paste a video, playlist, or channel URL
+3. Click Download
+4. Files save into Audio or Video folders
+
+Requirements:
+• yt-dlp.exe
+• ffmpeg.exe
+• Same folder as this app
+"@,
+"Instructions",
+"OK",
+"Information"
+)
+}
+
+# ---------------- MAIN FORM ----------------
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "YTMP3"
-$form.Size = '340,470'
-$form.FormBorderStyle = 'FixedDialog'
+$form.Text = "YT Downloader"
+$form.Size = "360,430"
+$form.StartPosition = "CenterScreen"
+$form.FormBorderStyle = "FixedDialog"
 $form.MaximizeBox = $false
-$form.StartPosition = 'CenterScreen'
 $form.BackColor = $BG
 $form.ForeColor = $FG
 
-# ---------- BUTTON MAKER ----------
-function MakeBtn($text,$y,$action,$parent) {
+if (Test-Path "$BaseDir\app.ico") {
+    $form.Icon = New-Object System.Drawing.Icon("$BaseDir\app.ico")
+}
+
+$title = New-Object System.Windows.Forms.Label
+$title.Text = "YT Downloader"
+$title.Font = New-Object System.Drawing.Font("Segoe UI",16,[System.Drawing.FontStyle]::Bold)
+$title.AutoSize = $true
+$title.Location = "85,20"
+
+function MakeBtn($text,$y,$action) {
     $b = New-Object System.Windows.Forms.Button
     $b.Text = $text
-    $b.Size = '240,38'
+    $b.Size = "260,38"
     $b.Location = "40,$y"
     $b.BackColor = $BTN
     $b.ForeColor = $FG
-    $b.FlatStyle = 'Flat'
     $b.Add_Click($action)
-    $parent.Controls.Add($b)
+    return $b
 }
 
-# ---------- PANELS ----------
-$Mp3Panel = New-Object System.Windows.Forms.Panel
-$Mp4Panel = New-Object System.Windows.Forms.Panel
-foreach ($p in @($Mp3Panel,$Mp4Panel)) {
-    $p.Dock = 'Fill'
-    $p.BackColor = $BG
-}
-$Mp4Panel.Visible = $false
-$form.Controls.AddRange(@($Mp3Panel,$Mp4Panel))
+$mp3 = MakeBtn "MP3 Downloader" 80  { Open-DownloadWindow "MP3 Download" "MP3" }
+$mp4 = MakeBtn "MP4 Downloader" 130 { Open-DownloadWindow "MP4 Download" "MP4" }
+$oa  = MakeBtn "Open Audio Folder" 180 { Start-Process explorer.exe $AudioDir }
+$ov  = MakeBtn "Open Video Folder" 225 { Start-Process explorer.exe $VideoDir }
+$ins = MakeBtn "Instructions" 270 { Show-Instructions }
+$ext = MakeBtn "Exit" 315 { $form.Close() }
 
-# ---------- MP3 MENU ----------
-MakeBtn "Single Video → MP3" 60  { Open-UrlWindow "Single Video" $true "--no-playlist" } $Mp3Panel
-MakeBtn "Playlist → MP3"     105 { Open-UrlWindow "Playlist" $true "" } $Mp3Panel
-MakeBtn "Channel → MP3"      150 { Open-UrlWindow "Channel" $true "" } $Mp3Panel
-MakeBtn "Open Audio Folder"  195 { Start-Process explorer.exe $AudioDir } $Mp3Panel
-MakeBtn "Go to MP4 Menu"     240 { $Mp3Panel.Visible=$false; $Mp4Panel.Visible=$true } $Mp3Panel
-MakeBtn "Instructions"       285 { Show-Instructions } $Mp3Panel
-MakeBtn "Exit"               330 { $form.Close() } $Mp3Panel
-
-# ---------- MP4 MENU ----------
-MakeBtn "YouTube → MP4"      80  { Open-UrlWindow "MP4 Video" $false "" } $Mp4Panel
-MakeBtn "Open Video Folder"  125 { Start-Process explorer.exe $VideoDir } $Mp4Panel
-MakeBtn "Back to MP3 Menu"   170 { $Mp4Panel.Visible=$false; $Mp3Panel.Visible=$true } $Mp4Panel
-MakeBtn "Instructions"       215 { Show-Instructions } $Mp4Panel
-MakeBtn "Exit"               260 { $form.Close() } $Mp4Panel
-
-# ---------- START ----------
-$form.ShowDialog() | Out-Null
+$form.Controls.AddRange(@($title,$mp3,$mp4,$oa,$ov,$ins,$ext))
+$form.ShowDialog()
