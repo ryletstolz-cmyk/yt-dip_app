@@ -1,6 +1,7 @@
 YTMP3 / YTMP4 Downloader
 1.download File.zip
 2. open app File
+3.unzip
 HOW TO USE:
 
 1. Open YTMP3_Launcher.cmd
@@ -26,6 +27,7 @@ Made with PowerShell + Windows Forms
 
 
 by ryguy.os + https://chatgpt.com
+
 
 
 
