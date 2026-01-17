@@ -1,4 +1,4 @@
-<img width="1024" height="1024" alt="yt_dip_app" src="https://github.com/user-attachments/assets/fc06d03b-daf5-4b36-970c-14cbacfbf32f" />
+<img width="100" height="100" alt="yt_dip_app" src="https://github.com/user-attachments/assets/fc06d03b-daf5-4b36-970c-14cbacfbf32f" />
 
 YTMP3 / YTMP4 Downloader
 1.download File.zip<dr>
@@ -29,6 +29,7 @@ Made with PowerShell + Windows Forms
 
 
 by ryguy.os + https://chatgpt.com
+
 
 
 
