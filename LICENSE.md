@@ -1,4 +1,6 @@
-This is free and unencumbered software released into the public domain.
+<img width="500" height="500" alt="LICENSE" src="https://github.com/user-attachments/assets/4ba132bf-390f-4f41-90a1-1276db5c5cb1" />
+This is free and unencumbered software released into the public domain. 
+
 
 Anyone is free to copy, modify, publish, use, compile, sell, or
 distribute this software, either in source code form or as a compiled
