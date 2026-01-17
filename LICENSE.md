@@ -1,4 +1,4 @@
-<img width="500" height="500" alt="LICENSE" src="https://github.com/user-attachments/assets/4ba132bf-390f-4f41-90a1-1276db5c5cb1" />
+<img width="100" height="100" alt="LICENSE" src="https://github.com/user-attachments/assets/4ba132bf-390f-4f41-90a1-1276db5c5cb1" />
 This is free and unencumbered software released into the public domain. 
 
 
